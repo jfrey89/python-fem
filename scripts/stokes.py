@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import division
 import ap.mesh.meshes as m
 import numpy as np
 
@@ -71,18 +72,29 @@ if __name__ == '__main__':
     elements = domain.elements
     nodes = domain.nodes
 
-    A = np.zeros((len(nodes), len(nodes)))
-    B = np.zeros((len(nodes), len(nodes)))
-    C = np.zeros((len(nodes), len(nodes)))
+    stiffness_velocity_x = np.zeros((len(nodes), len(nodes)))
+    stiffness_velocity_y = np.zeros((len(nodes), len(nodes)))
+    stiffness_pressure = np.zeros((len(nodes), len(nodes)))
     
     
     for element in elements:
+        
         coordinates = get_coordinates(element, nodes)
-        corners = coordinates[:4]
+        corners = coordinates[:3]
         J = calculate_jacobian(corners)
         
         for i in xrange(6):
             for j in xrange(i, 6):
+                
+                dot_product = lambda i, j, x, y: \
+                np.dot(np.dot(J, quadratic_basis_gradient(i, x, y)), 
+                              np.dot(J, quadratic_basis_gradient(j, x, y)))
+
+                I_x = (dot_product(i, j, 0.5, 0.5) + \
+                dot_product(i, j, 0.0, 0.5) + dot_product(i, j, 0.5, 0.0)) / 6
+                
+                stiffness_velocity_x[element[i] - 1, element[j] - 1] = \
+                stiffness_velocity_x[element[i] - 1, element[j] - 1] + I_x
                 
                 pass
             pass
