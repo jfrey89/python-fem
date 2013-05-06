@@ -86,15 +86,29 @@ if __name__ == '__main__':
         for i in xrange(6):
             for j in xrange(i, 6):
                 
-                dot_product = lambda i, j, x, y: \
-                np.dot(np.dot(J, quadratic_basis_gradient(i, x, y)), 
-                              np.dot(J, quadratic_basis_gradient(j, x, y)))
-
-                I_x = (dot_product(i, j, 0.5, 0.5) + \
-                dot_product(i, j, 0.0, 0.5) + dot_product(i, j, 0.5, 0.0)) / 6
+                quad_grad_basis = lambda k, x, y: \
+                np.dot(J.T, quadratic_basis_gradient(k, x, y))
+                
+                dot_product = lambda x, y: \
+                np.dot(quad_grad_basis(i, x, y), quad_grad_basis(j, x, y)) * \
+                np.linalg.det(J)
+                
+                I_x = (dot_product(0.5, 0.5) + dot_product(0.0, 0.5) + \
+                dot_product(0.5, 0.0)) / 6
+                
+                I_y = (dot_product(0.5, 0.5) + dot_product(0.0, 0.5) + \
+                dot_product(0.5, 0.0)) / 6
                 
                 stiffness_velocity_x[element[i] - 1, element[j] - 1] = \
                 stiffness_velocity_x[element[i] - 1, element[j] - 1] + I_x
                 
+                stiffness_velocity_y[element[i] - 1, element[j] - 1] = \
+                stiffness_velocity_y[element[i] - 1, element[j] - 1] + I_y
+                
+                stiffness_velocity_x[element[j] - 1, element[i] - 1] = \
+                stiffness_velocity_x[element[i] - 1, element[j] - 1]
+                
+                stiffness_velocity_y[element[j] - 1, element[i] - 1] = \
+                stiffness_velocity_y[element[i] - 1, element[j] - 1]                
                 pass
             pass
