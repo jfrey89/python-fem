@@ -59,48 +59,63 @@ if __name__ == '__main__':
         J = calculate_jacobian(corners)
         detJ = np.abs(np.linalg.det(J))
 
-        for i in xrange(6):
-            for j in xrange(i, 6):
-                gauss_quad = 0.0
+        # the pressure equation
+        for i in xrange(3):
+            for j in xrange(6):
                 node_i = element[i] - 1
                 node_j = element[j] - 1
 
+                gauss_quad_x = 0.0
+                gauss_quad_y = 0.0
+
                 for point in gauss_points:
-                    gauss_quad = gauss_quad + np.dot(
-                        np.dot(J.T, quad_basis.grad(i, point[0], point[1])),
-                        np.dot(J.T, quad_basis.grad(j, point[0], point[1])))
 
-                gauss_quad = gauss_quad / (6.0 * detJ)
+                    gauss_quad_x = gauss_quad_x + (np.dot(
+                        J.T[0], quad_basis.grad(j, point[0], point[1])) *
+                        lin_basis(i, point[0], point[1])) / (6 * detJ)
+                    gauss_quad_y = gauss_quad_y + (np.dot(
+                        J.T[1], quad_basis.grad(j, point[0], point[1])) *
+                        lin_basis(i, point[0], point[1])) / (6 * detJ)
+                # scatter
+                stiff_vx[node_i, node_j] = (stiff_vx[node_i, node_j] +
+                                            gauss_quad_x)
+                stiff_vy[node_i, node_j] = (stiff_vy[node_i, node_j] +
+                                            gauss_quad_y)
 
-                stiff_vx[node_i, node_j] = stiff_vx[node_i, node_j] + \
-                    gauss_quad
-                stiff_vy[node_i, node_j] = stiff_vy[node_i, node_j] + \
-                    gauss_quad
+        # velocity equations
+        for i in xrange(6):
+            for j in xrange(6):
+                node_i = element[i] - 1
+                node_j = element[j] - 1
+
+                gauss_quad = 0.0
+                gauss_quad_px = 0.0
+                gauss_quad_py = 0.0
+
+                for point in gauss_points:
+                    gauss_quad = gauss_quad + ((np.dot(
+                        np.dot(J.T, quad_basis.grad(j, point[0], point[1])),
+                        np.dot(J.T, quad_basis.grad(i, point[0], point[1]))))
+                        / (6 * detJ))
+
+                stiff_vx[node_i, node_j] = (stiff_vx[node_i, node_j] +
+                                            gauss_quad)
+                stiff_vy[node_i, node_j] = (stiff_vy[node_i, node_j] +
+                                            gauss_quad)
 
                 if j < 3:
-                    gauss_quad_x = 0.0
-                    gauss_quad_y = 0.0
-
                     for point in gauss_points:
-                        gauss_quad_x = gauss_quad_x + \
-                            np.dot(J.T[0], quad_basis.grad(i, point[0],
-                                                           point[1])) * \
-                            lin_basis(j, point[0],point[1])
-                        gauss_quad_y = gauss_quad_y + \
-                            np.dot(J.T[1], quad_basis.grad(i, point[0],
-                                                           point[1])) * \
-                            lin_basis(j, point[0],point[1])
+                        gauss_quad_px = gauss_quad_px + (np.dot(
+                            J.T[0], lin_basis.grad(j, point[0], point[1])) *
+                            quad_basis(i, point[0], point[1])) / (6 * detJ)
 
-                    gauss_quad_x = gauss_quad_x / (6 * detJ)
-                    gauss_quad_y = gauss_quad_y / (6 * detJ)
+                        gauss_quad_py = gauss_quad_py + (np.dot(
+                            J.T[1], lin_basis.grad(j, point[0], point[1])) *
+                            quad_basis(i, point[0], point[1])) / (6 * detJ)
 
-                    stiff_vx[node_i, node_j] = stiff_vx[node_i, node_j] + \
-                        gauss_quad_x
-                    stiff_vy[node_i, node_j] = stiff_vy[node_i, node_j] + \
-                        gauss_quad_y
+                stiff_p[node_i, node_j] = (stiff_p[node_i, node_j] +
+                                           gauss_quad_px + gauss_quad_py)
 
-                stiff_vx[node_j, node_i] = stiff_vx[node_i, node_j]
-                stiff_vy[node_j, node_i] = stiff_vy[node_i, node_j]
-
-                pass
-            pass
+    np.savetxt('./files/stiff_vx.txt', stiff_vx)
+    np.savetxt('./files/stiff_vy.txt', stiff_vy)
+    np.savetxt('./files/stiff_p.txt', stiff_p)

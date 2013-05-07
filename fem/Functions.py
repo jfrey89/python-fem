@@ -40,6 +40,9 @@ class Linear_Basis_Function(object):
 
         self._derivative_coefficients = np.array([[-1, -1], [1, 0], [0, 1]])
 
+    def grad(self, i, x, y):
+        return self._derivative_coefficients[i]
+
     def diff(self, i, x, y, derivative_variable):
         if derivative_variable == 'x':
             return self._derivative_coefficients[i, 0]
