@@ -61,7 +61,6 @@ if __name__ == '__main__':
 
         for i in xrange(6):
             for j in xrange(i, 6):
-
                 gauss_quad = 0.0
                 node_i = element[i] - 1
                 node_j = element[j] - 1
@@ -82,22 +81,23 @@ if __name__ == '__main__':
                     gauss_quad_x = 0.0
                     gauss_quad_y = 0.0
 
-                    gauss_quad_x = gauss_quad_x + \
-                        np.dot(J.T[0], quad_basis.grad(
+                    for point in gauss_points:
+                        gauss_quad_x = gauss_quad_x + \
+                            np.dot(J.T[0], quad_basis.grad(i, point[0],
+                                                           point[1])) * \
+                            lin_basis(j, point[0],point[1])
+                        gauss_quad_y = gauss_quad_y + \
+                            np.dot(J.T[1], quad_basis.grad(i, point[0],
+                                                           point[1])) * \
+                            lin_basis(j, point[0],point[1])
 
-                    #pres_cont_x = lambda x, y: \
-                        #grad_basis(i, x, y)[0] * lin_basis(j, x, y) / detJ
+                    gauss_quad_x = gauss_quad_x / (6 * detJ)
+                    gauss_quad_y = gauss_quad_y / (6 * detJ)
 
-                    #stiff_vx[node_i, node_j] += \
-                        #(pres_cont_x(0.5, 0.5) + pres_cont_x(0.0, 0.5) +
-                         #pres_cont_x(0.5, 0.0)) / (6 * detJ)
-
-                    #pres_cont_y = lambda x, y: \
-                        #grad_basis(i, x, y)[1] * lin_basis(j, x, y) / detJ
-
-                    #stiff_vy[node_i, node_j] += \
-                        #(pres_cont_y(0.5, 0.5) + pres_cont_y(0.0, 0.5) +
-                         #pres_cont_y(0.5, 0.0)) / (6 * detJ)
+                    stiff_vx[node_i, node_j] = stiff_vx[node_i, node_j] + \
+                        gauss_quad_x
+                    stiff_vy[node_i, node_j] = stiff_vy[node_i, node_j] + \
+                        gauss_quad_y
 
                 stiff_vx[node_j, node_i] = stiff_vx[node_i, node_j]
                 stiff_vy[node_j, node_i] = stiff_vy[node_i, node_j]
