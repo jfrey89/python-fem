@@ -78,7 +78,13 @@ if __name__ == '__main__':
                 stiff_vy[node_i, node_j] = stiff_vy[node_i, node_j] + \
                     gauss_quad
 
-                #if j < 3:
+                if j < 3:
+                    gauss_quad_x = 0.0
+                    gauss_quad_y = 0.0
+
+                    gauss_quad_x = gauss_quad_x + \
+                        np.dot(J.T[0], quad_basis.grad(
+
                     #pres_cont_x = lambda x, y: \
                         #grad_basis(i, x, y)[0] * lin_basis(j, x, y) / detJ
 
