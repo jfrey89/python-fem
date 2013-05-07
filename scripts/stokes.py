@@ -23,7 +23,7 @@ def get_coordinates(element, nodes):
     return coordinates
 
 
-def calculate_jacobian(coordinates):
+def calculate_B(coordinates):
     # unpack coordinates
     x1, y1 = coordinates[0]
     x2, y2 = coordinates[1]
@@ -31,15 +31,6 @@ def calculate_jacobian(coordinates):
 
     return np.linalg.inv(np.array([[x1 - x3, x2 - x3],
                                    [y1 - y3, y2 - y3]]))
-
-
-def gauss_quadrature(f):
-    """
-    Calculates the three point gauss quadrature for a function f(x,y) on
-    the reference triangle. Gauss points are (0.5, 0.0), (0.0, 0.5), and
-    (0.5, 0.5).
-    """
-    return (f(0.5, 0.0) + f(0.0, 0.5) + f(0.5, 0.5)) / 6.0
 
 
 if __name__ == '__main__':
@@ -50,74 +41,22 @@ if __name__ == '__main__':
     elements = domain.elements
     nodes = domain.nodes
 
-    stiff_vx = np.zeros((len(nodes), len(nodes)))
-    stiff_vy = np.zeros((len(nodes), len(nodes)))
-    stiff_px = np.zeros((len(nodes), len(nodes)))
-    stiff_py = np.zeros((len(nodes), len(nodes)))
+    weight = 1 / 6.0
+    gauss_pts = np.array([[0.5, 0.0],
+                          [0.0, 0.5],
+                          [0.5, 0.5]])
 
     quad_basis = fn.Quadratic_Basis_Function()
     lin_basis = fn.Linear_Basis_Function()
 
     for element in elements:
         coordinates = get_coordinates(element, nodes)
-        corners = coordinates[:3]   # gmesh default behavior
-        J = calculate_jacobian(corners)
-        detJ = np.abs(np.linalg.det(J))
+        B = calculate_B(coordinates[:3])
+        detJ = 1 / np.abs(np.linalg.det(B))
+        weight_scaled = weight * np.dot(B, B.T) * detJ
 
         for i in xrange(6):
             for j in xrange(6):
-                node_i = element[i] - 1
-                node_j = element[j] - 1
+                # global index for scattering
+                node_i, node_j = element[i] - 1, element[j] - 1
 
-                # horizontal momentum equation
-                lpl = lambda x, y: np.dot(
-                    np.dot(J.T, quad_basis.grad(i, x, y)),
-                    np.dot(J.T, quad_basis.grad(j, x, y))) / detJ
-
-                stiff_vx[node_i, node_j] = (stiff_vx[node_i, node_j] +
-                                            gauss_quadrature(lpl))
-
-                if j < 3:
-                    peqn_x = lambda x, y:  \
-                        (np.dot(J.T[0], quad_basis.grad(i, x, y)) *
-                         lin_basis(j, x, y)) / detJ
-
-                    stiff_vx[node_i, node_j] = \
-                        (stiff_vx[node_i, node_j] +
-                         gauss_quadrature(peqn_x))
-
-                # vertical momentum equation
-                lpl = lambda x, y: np.dot(
-                    np.dot(J.T, quad_basis.grad(i, x, y)),
-                    np.dot(J.T, quad_basis.grad(j, x, y))) / detJ
-
-                stiff_vy[node_i, node_j] = \
-                    (stiff_vy[node_i, node_j] + gauss_quadrature(lpl))
-
-                if j < 3:
-                    peqn_y = lambda x, y:  \
-                        (np.dot(J.T[1], quad_basis.grad(i, x, y)) *
-                         lin_basis(j, x, y)) / detJ
-
-                    stiff_vy[node_i, node_j] = \
-                        (stiff_vy[node_i, node_j] + gauss_quadrature(peqn_y))
-
-                if i < 3:
-                    ceqn_x = lambda x, y: \
-                        (np.dot(J.T[0], lin_basis.grad(i, x, y)) *
-                         quad_basis(j, x, y)) / detJ
-
-                    ceqn_y = lambda x, y: (
-                        np.dot(J.T[1], lin_basis.grad(i, x, y)) *
-                        quad_basis(j, x, y)) / detJ
-
-                    stiff_px[node_i, node_j] = (stiff_px[node_i, node_j] +
-                                                gauss_quadrature(ceqn_x))
-
-                    stiff_py[node_i, node_j] = (stiff_py[node_i, node_j] +
-                                                gauss_quadrature(ceqn_y))
-
-    np.savetxt('./files/stiff_vx', stiff_vx)
-    np.savetxt('./files/stiff_vy', stiff_vy)
-    np.savetxt('./files/stiff_px', stiff_px)
-    np.savetxt('./files/stiff_py', stiff_py)
