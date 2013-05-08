@@ -34,7 +34,7 @@ class Linear_Basis_Function(object):
 
         self._derivative_coefficients = np.array([[-1, -1], [1, 0], [0, 1]])
 
-    def grad(self, i, x, y):
+    def grad(self, i):
         return self._derivative_coefficients[i]
 
     def __call__(self, i, x, y):

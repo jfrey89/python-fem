@@ -39,24 +39,71 @@ if __name__ == '__main__':
     # load mesh
     domain = m.mesh_factory(root_dir + mesh_file)
     elements = domain.elements
-    nodes = domain.nodes
+    nodes_2_coords = domain.nodes
+    nodes = np.unique(elements)
+    pnodes = np.unique(elements.T[:][:3])
 
     weight = 1 / 6.0
     gauss_pts = np.array([[0.5, 0.0],
                           [0.0, 0.5],
                           [0.5, 0.5]])
 
+    A = np.zeros((nodes.max(), nodes.max()))
+    Bx = np.zeros((pnodes.max(), nodes.max()))
+    By = Bx.copy()
+    Cx = np.zeros((nodes.max(), pnodes.max()))
+    Cy = Cx.copy()
+
     quad_basis = fn.Quadratic_Basis_Function()
     lin_basis = fn.Linear_Basis_Function()
 
     for element in elements:
-        coordinates = get_coordinates(element, nodes)
+        coordinates = get_coordinates(element, nodes_2_coords)
         B = calculate_B(coordinates[:3])
         detJ = 1 / np.abs(np.linalg.det(B))
-        weight_scaled = weight * np.dot(B, B.T) * detJ
+        weight_scaled = weight * detJ
 
         for i in xrange(6):
             for j in xrange(6):
                 # global index for scattering
                 node_i, node_j = element[i] - 1, element[j] - 1
 
+                for point in gauss_pts:
+                    x_g, y_g = point
+                    A[node_i, node_j] += weight_scaled * np.dot(
+                        np.dot(quad_basis.grad(i, x_g, y_g), B),
+                        np.dot(B.T, quad_basis.grad(j, x_g, y_g)))
+
+        for i in xrange(3):
+            for j in xrange(6):
+                node_i, node_j = element[i] - 1, element[j] - 1
+
+                for point in gauss_pts:
+                    x_g, y_g = point
+                    Bx[node_i, node_j] += weight_scaled * (
+                        np.dot(lin_basis.grad(i), B[0]) *
+                        quad_basis(j, x_g, y_g))
+
+                    By[node_i, node_j] += weight_scaled * (
+                        np.dot(lin_basis.grad(i), B[1]) *
+                        quad_basis(j, x_g, y_g))
+
+        for i in xrange(6):
+            for j in xrange(3):
+                node_i, node_j = element[i] - 1, element[j] - 1
+
+                for point in gauss_pts:
+                    x_g, y_g = point
+                    Cx[node_i, node_j] += weight_scaled * (
+                        np.dot(quad_basis.grad(i, x_g, y_g), B[0]) *
+                        lin_basis(j, x_g, y_g))
+
+                    Cy[node_i, node_j] += weight_scaled * (
+                        np.dot(quad_basis.grad(i, x_g, y_g), B[1]) *
+                        lin_basis(j, x_g, y_g))
+
+    np.savetxt('./files/A.txt', A)
+    np.savetxt('./files/Bx.txt', Bx)
+    np.savetxt('./files/By.txt', By)
+    np.savetxt('./files/Cx.txt', Cx)
+    np.savetxt('./files/Cy.txt', Cy)
