@@ -4,7 +4,6 @@ from __future__ import division
 import ap.mesh.meshes as m
 import fem.Functions as fn
 import numpy as np
-from scipy.sparse.linalg import spsolve
 import sys
 
 
@@ -85,7 +84,7 @@ if __name__ == '__main__':
 
                     f2[node_j] += -weight_scaled * quad_basis(j, x_g, y_g)
 
-        # -(p_h, div v)
+        # (p_h, div v)
         for i in xrange(3):
             for j in xrange(6):
                 node_i, node_j = element[i] - 1, element[j] - 1
