@@ -130,7 +130,7 @@ if __name__ == '__main__':
         #Hy.T[node] = np.zeros(np.shape(Hy.T[node]))
 
     Z = np.zeros(np.shape(S))
-    A = np.bmat([[S, Z, Gx], [Z, S, Gy], [Hx, Hy, Z]])
+    A = np.bmat([[S, Z, -Gx], [Z, S, -Gy], [Hx, Hy, Z]])
     # make it nonsingular, nearby matrix
     A += np.eye(np.shape(A)[0], np.shape(A)[1]) * eps
 
