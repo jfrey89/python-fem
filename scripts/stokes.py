@@ -11,13 +11,13 @@ import sys
 
 def f1(x, y):
     #fval = np.sin(np.pi * x) * np.sin(np.pi * y) * np.exp(-(x * x + y * y))
-    fval = 0
+    fval = np.sin(x)
     return fval
 
 
 def f2(x, y):
     #fval = np.sin(np.pi * x) * np.sin(np.pi * y) * np.exp(-(x * x + y * y))
-    fval = -1
+    fval = 0
     return fval
 
 
@@ -51,7 +51,7 @@ def calculate_B(coordinates):
 if __name__ == '__main__':
     # USER SET PARAMETERS
     reynolds = 1e0
-    perturb = 1e-2
+    perturb = 1e-3
     mesh_file = 'strip_smaller.mesh'
 
     eps = sys.float_info.epsilon
@@ -209,7 +209,9 @@ if __name__ == '__main__':
     f = np.concatenate((fx, fy, np.zeros(m)))
 
     print "Solving the linear system...\t",
-    c = spl.spsolve(A, f)
+    #c = spl.spsolve(A, f)
+    c = spl.gmres(A, f)
+    c = c[0]
     print "Done!\n"
 
     #print "Saving files...\t",
