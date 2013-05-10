@@ -49,12 +49,12 @@ def calculate_B(coordinates):
 
 
 if __name__ == '__main__':
+    eps = sys.float_info.epsilon
     # USER SET PARAMETERS
     reynolds = 1e0
-    perturb = 1e-2
+    perturb = 10 * eps
     mesh_file = 'box-circle.mesh'
 
-    eps = sys.float_info.epsilon
     root_dir = './files/'
     print "Loading and parsing the mesh...\t",
     domain = m.mesh_factory(root_dir + mesh_file)
@@ -210,8 +210,7 @@ if __name__ == '__main__':
 
     print "Solving the linear system...\t",
     #c = spl.spsolve(A, f)
-    c = spl.gmres(A, f)
-    c = c[0]
+    c = spl.gmres(A, f)[0]
     print "Done!\n"
 
     #print "Saving files...\t",
@@ -243,14 +242,17 @@ if __name__ == '__main__':
     np.savetxt('./files/tri_p.txt', tri_p)
 
     # new system
-    A = sp.bmat([[S, sp.csr_matrix((k, k))],
-                 [sp.csr_matrix((k, k)), S]], format='csr')
-    B = sp.bmat([Hx, Hy], format='csr')
-    BT = sp.bmat([[Hx], [Hy]], format='csr')
+    AA = sp.bmat([[S, sp.csr_matrix((k, k))],
+                  [sp.csr_matrix((k, k)), S]],
+                 format='csr')
 
-    C = A + B.dot(BT) / perturb
-    f = np.concatenate((fx, fy))
+    BB = sp.bmat([[Gx.dot(Gx.T), Gx.dot(Gy.T)],
+                  [Gy.dot(Gx.T), Gy.dot(Gy.T)]],
+                 format='csr') / perturb
 
-    d = spl.gmres(C, f)
-    d = d[0]
-    np.savetxt('./files/d.txt', d)
+    CC = AA + BB / perturb
+
+    ff = np.concatenate((fx, fy))
+
+    cc = spl.gmres(AA, ff)[0]
+    np.savetxt('./files/cc.txt', cc)
