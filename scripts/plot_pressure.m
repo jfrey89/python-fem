@@ -1,3 +1,6 @@
+c = load('./../files/c.txt');
+cc = load('./../files/cc.txt');
+coeff = [c(1:length(cc)) cc];
 x = load('./../files/x_p.txt');
 y = load('./../files/y_p.txt');
 z = load('./../files/z_p.txt');

@@ -11,13 +11,13 @@ import sys
 
 def f1(x, y):
     #fval = np.sin(np.pi * x) * np.sin(np.pi * y) * np.exp(-(x * x + y * y))
-    fval = np.sin(x)
+    fval = 1
     return fval
 
 
 def f2(x, y):
     #fval = np.sin(np.pi * x) * np.sin(np.pi * y) * np.exp(-(x * x + y * y))
-    fval = 0
+    fval = -1
     return fval
 
 
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     eps = sys.float_info.epsilon
     # USER SET PARAMETERS
     reynolds = 1e0
-    perturb = 10 * eps
+    perturb = 1e-2
     mesh_file = 'box-circle.mesh'
 
     root_dir = './files/'
@@ -209,8 +209,8 @@ if __name__ == '__main__':
     f = np.concatenate((fx, fy, np.zeros(m)))
 
     print "Solving the linear system...\t",
-    #c = spl.spsolve(A, f)
-    c = spl.gmres(A, f)[0]
+    c = spl.spsolve(A, f)
+    #c = spl.gmres(A, f)[0]
     print "Done!\n"
 
     #print "Saving files...\t",
@@ -248,11 +248,12 @@ if __name__ == '__main__':
 
     BB = sp.bmat([[Gx.dot(Gx.T), Gx.dot(Gy.T)],
                   [Gy.dot(Gx.T), Gy.dot(Gy.T)]],
-                 format='csr') / perturb
+                 format='csr')
 
     CC = AA + BB / perturb
 
     ff = np.concatenate((fx, fy))
 
-    cc = spl.gmres(AA, ff)[0]
+    #cc = spl.gmres(AA, ff)[0]
+    cc = spl.spsolve(AA, ff)
     np.savetxt('./files/cc.txt', cc)
