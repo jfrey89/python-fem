@@ -7,17 +7,18 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spl
 import sys
+import matplotlib.pyplot as pyplot
 
 
 def f1(x, y):
     #fval = np.sin(np.pi * x) * np.sin(np.pi * y) * np.exp(-(x * x + y * y))
-    fval = 1
+    fval = -y
     return fval
 
 
 def f2(x, y):
     #fval = np.sin(np.pi * x) * np.sin(np.pi * y) * np.exp(-(x * x + y * y))
-    fval = -1
+    fval = x
     return fval
 
 
@@ -52,7 +53,7 @@ if __name__ == '__main__':
     eps = sys.float_info.epsilon
     # USER SET PARAMETERS
     reynolds = 1e0
-    perturb = 1e-2
+    eps = 1e-4 / reynolds
     mesh_file = 'box-circle.mesh'
 
     root_dir = './files/'
@@ -73,14 +74,12 @@ if __name__ == '__main__':
 
     print "Allocating individual matrices...\t",
     S = sp.lil_matrix((n, n))
+    T = sp.lil_matrix((m, m))
     Gx = sp.lil_matrix((n, m))
     Gy = sp.lil_matrix((n, m))
-    Hx = sp.lil_matrix((m, n))
-    Hy = sp.lil_matrix((m, n))
-    print "Done!\n"
-
     fx = np.zeros(n)
     fy = fx.copy()
+    print "Done!\n"
 
     quad_basis = fn.Quadratic_Basis_Function()
     lin_basis = fn.Linear_Basis_Function()
@@ -101,97 +100,78 @@ if __name__ == '__main__':
 
         # Allocate local matrices
         local_S = sp.lil_matrix((6, 6))
-        local_Hx = sp.lil_matrix((3, 6))
-        local_Hy = sp.lil_matrix((3, 6))
+        local_T = sp.lil_matrix((3, 3))
         local_Gx = sp.lil_matrix((6, 3))
         local_Gy = sp.lil_matrix((6, 3))
-
         local_fx = np.zeros(n)
-        local_fy = local_fx.copy()
+        local_fy = np.zeros(n)
 
         for i in xrange(6):
-
-            # load vectors
+            # Assemble load vectors
             for point in gauss_pts:
                 x_g, y_g = point
                 local_fx[i] += weight_scaled * f1(x_g, y_g)
                 local_fy[i] += weight_scaled * f2(x_g, y_g)
-
             for j in xrange(6):
-
-                # S(i, j) = (grad psi_j, grad psi_i)
+                # Assemble S
                 for point in gauss_pts:
                     x_g, y_g = point
                     local_S[i, j] += (weight_scaled / reynolds) * np.dot(
                         np.dot(quad_basis.grad(j, x_g, y_g), B),
                         np.dot(B.T, quad_basis.grad(i, x_g, y_g)))
 
-                # H_x(i, j) = (d/dx psi_j, phi_i)
-                # H_y(i, j) = (d/dy psi_j, phi_i)
-                if i < 3:
-                    for point in gauss_pts:
-                        x_g, y_g = point
-                        local_Hx[i, j] += weight_scaled * (
-                            np.dot(quad_basis.grad(j, x_g, y_g), B[0]) *
-                            lin_basis(i, x_g, y_g))
-
-                        local_Hy[i, j] += weight_scaled * (
-                            np.dot(quad_basis.grad(j, x_g, y_g), B[1]) *
-                            lin_basis(i, x_g, y_g))
-
-                # G_x(i, j) = (phi_j, d/dx psi_i)
-                # G_y(i, j) = (phi_j, d/dy psi_i)
                 if j < 3:
+                    # Assemble Gx and Gy
                     for point in gauss_pts:
                         x_g, y_g = point
                         local_Gx[i, j] += weight_scaled * (
                             lin_basis(j, x_g, y_g) *
                             np.dot(quad_basis.grad(i, x_g, y_g), B[0]))
-
                         local_Gy[i, j] += weight_scaled * (
                             lin_basis(j, x_g, y_g) *
                             np.dot(quad_basis.grad(i, x_g, y_g), B[1]))
+
+                    if i < 3:
+                        for point in gauss_pts:
+                            x_g, y_g = point
+                            local_T[i, j] += weight_scaled * (
+                                lin_basis(j, x_g, y_g) *
+                                lin_basis(i, x_g, y_g))
+
+                    #for point in gauss_pts:
+                        #x_g, y_g = point
+                        #local_Hx[i, j] += weight_scaled * (
+                            #np.dot(quad_basis.grad(j, x_g, y_g), B[0]) *
+                            #lin_basis(i, x_g, y_g))
+                        #local_Hy[i, j] += weight_scaled * (
+                            #np.dot(quad_basis.grad(j, x_g, y_g), B[1]) *
+                            #lin_basis(i, x_g, y_g))
+
         counter += 1
         # scatter the local matrices
         for i in xrange(6):
             fx[element[i] - 1] += local_fx[i]
             fy[element[i] - 1] += local_fy[i]
-
             for j in xrange(6):
                 # Scatter S
                 S[element[i] - 1, element[j] - 1] += local_S[i, j]
-
-                # Scatter Hx, Hy
-                # Hx, Hy is m x n
-                if i < 3:
-                    pnode_i = np.where(pnodes == element[i])[0][0]
-                    Hx[pnode_i, element[j] - 1] += local_Hx[i, j]
-                    Hy[pnode_i, element[j] - 1] += local_Hy[i, j]
-
                 # Scatter Gx, Gy
-                # Gx, Gy is n x m
                 if j < 3:
                     pnode_j = np.where(pnodes == element[j])[0][0]
                     Gx[element[i] - 1, pnode_j] += local_Gx[i, j]
                     Gy[element[i] - 1, pnode_j] += local_Gy[i, j]
+                    if i < 3:
+                        pnode_i = np.where(pnodes == element[i])[0][0]
+                        T[pnode_i, pnode_j] += local_T[i, j]
 
-    print "Applying homogenous boundary conditions...\t",
-    # Apply the boundary conditions
-    # Assuming that velocity (u, v) = (0, 0) on the boundary
-    # That implies that the mean pressure is zero over the domain
-    # The mean pressure is taken into account by allowing the space for
-    # (u, v) to not necessarily be divergence-free. It integrates to zeros
-    # against the pressure space.
     S = S.tocsr()
-    Hx = Hx.tocsr()
-    Hy = Hy.tocsr()
+    T = T.tocsr()
     Gx = Gx.tocsr()
     Gy = Gy.tocsr()
 
+    print "Applying homogenous boundary conditions...\t",
     S = S[interior_nodes - 1, :]
     S = S[:, interior_nodes - 1]
-    Hx = Hx[:, interior_nodes - 1]
-    Hy = Hy[:, interior_nodes - 1]
     Gx = Gx[interior_nodes - 1, :]
     Gy = Gy[interior_nodes - 1, :]
     fx = fx[interior_nodes - 1, :]
@@ -200,60 +180,66 @@ if __name__ == '__main__':
 
     # Make a BIG MATRIX YAY
     k = len(interior_nodes)
-    print "Constructing stiffness matrix and load vector.\n"
-    A = sp.bmat([[S, sp.csr_matrix((k, k)), -Gx],
+    # But preallocate it first...
+    print "Constructing stiffness matrix with -eps...\t",
+    Am = sp.bmat([[S, sp.csr_matrix((k, k)), -Gx],
                  [sp.csr_matrix((k, k)), S, -Gy],
-                 [Hx, Hy, perturb * sp.eye(m, m, format='csr')]],
-                format='csr')
-
-    f = np.concatenate((fx, fy, np.zeros(m)))
-
-    print "Solving the linear system...\t",
-    c = spl.spsolve(A, f)
-    #c = spl.gmres(A, f)[0]
+                 [-Gx.T, -Gy.T, -eps * T]])
+    Am = Am.tocsr()
     print "Done!\n"
 
-    #print "Saving files...\t",
-    #np.savetxt('./files/A.txt', A))
-    #np.savetxt('./files/f.txt', f)
-    np.savetxt('./files/c.txt', c)
-    print 'Done!'
+    print "Constructing stiffness matrix with +eps...\t",
+    Ap = sp.bmat([[S, sp.csr_matrix((k, k)), -Gx],
+                 [sp.csr_matrix((k, k)), S, -Gy],
+                 [-Gx.T, -Gy.T, eps * T]])
+    Ap = Ap.tocsr()
+    print "Done!\n"
 
-    u_coef = np.zeros(n)
-    v_coef = u_coef.copy()
+    print "Constructing alternative system...\t",
+    Ar = sp.bmat([[S, np.zeros((k, k))],
+                  [np.zeros((k, k)), S]])
+    Br = sp.bmat([[Gx.dot(Gx.T), Gx.dot(Gy.T)],
+                  [Gy.dot(Gx.T), Gy.dot(Gy.T)]])
 
-    u_coef[interior_nodes - 1] = c[:k]
-    v_coef[interior_nodes - 1] = c[k: 2 * k]
-    p_coef = c[2 * k:]
+    Ar = Ar.tocsr()
+    Br = Br.tocsr()
+    print "Done!\n"
 
-    # POST PROCESSING
-    pcoords = coordinates[pnodes - 1]
-    x_p, y_p = pcoords.T
-    z_p = p_coef
+    # Change data type
+    f = np.zeros(2 * k + m)
+    print "Constructing f...\t",
+    f[:k] = fx[:]
+    f[k:2 * k] = fy[:]
+    print "Done!\n"
+    fr = f[:2 * k]
+
+    print "Solving the linear systems...\t",
+    cm = spl.spsolve(Am, f)
+    print "1...",
+    cp = spl.spsolve(Ap, f)
+    print "2...",
+    cr = spl.spsolve(Ar - Br / eps, fr)
+    print "3...!\nDone!"
+
+    # POST PROCESSING for system one
+    x_p, y_p = coordinates[pnodes - 1].T
     tri_p = np.zeros(np.shape(elements[:, :3]))
-
     for i, tri in enumerate(elements[:, :3]):
         for j, vert in enumerate(tri):
             tri_p[i, j] = np.where(pnodes == vert)[0][0]
 
+    np.savetxt('./files/tri.txt', tri_p)
     np.savetxt('./files/x_p.txt', x_p)
     np.savetxt('./files/y_p.txt', y_p)
-    np.savetxt('./files/z_p.txt', z_p)
-    np.savetxt('./files/tri_p.txt', tri_p)
+    np.savetxt('./files/pm.txt', cm[2 * k:])
+    np.savetxt('./files/pp.txt', cp[2 * k:])
 
-    # new system
-    AA = sp.bmat([[S, sp.csr_matrix((k, k))],
-                  [sp.csr_matrix((k, k)), S]],
-                 format='csr')
+    np.savetxt('./files/x.txt', coordinates[:, 0])
+    np.savetxt('./files/y.txt', coordinates[:, 1])
 
-    BB = sp.bmat([[Gx.dot(Gx.T), Gx.dot(Gy.T)],
-                  [Gy.dot(Gx.T), Gy.dot(Gy.T)]],
-                 format='csr')
-
-    CC = AA + BB / perturb
-
-    ff = np.concatenate((fx, fy))
-
-    #cc = spl.gmres(AA, ff)[0]
-    cc = spl.spsolve(AA, ff)
-    np.savetxt('./files/cc.txt', cc)
+    np.savetxt('./files/um.txt', cm[:k])
+    np.savetxt('./files/vm.txt', cm[k:2 * k])
+    np.savetxt('./files/up.txt', cp[:k])
+    np.savetxt('./files/vp.txt', cp[k:2 * k])
+    np.savetxt('./files/ur.txt', cr[:k])
+    np.savetxt('./files/vr.txt', cr[k:2 * k])
