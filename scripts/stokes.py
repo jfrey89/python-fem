@@ -51,8 +51,8 @@ def calculate_B(coordinates):
 if __name__ == '__main__':
     # USER SET PARAMETERS
     reynolds = 1e0
-    perturb = 1e-3
-    mesh_file = 'strip_smaller.mesh'
+    perturb = 1e-2
+    mesh_file = 'box-circle.mesh'
 
     eps = sys.float_info.epsilon
     root_dir = './files/'
@@ -241,3 +241,16 @@ if __name__ == '__main__':
     np.savetxt('./files/y_p.txt', y_p)
     np.savetxt('./files/z_p.txt', z_p)
     np.savetxt('./files/tri_p.txt', tri_p)
+
+    # new system
+    A = sp.bmat([[S, sp.csr_matrix((k, k))],
+                 [sp.csr_matrix((k, k)), S]], format='csr')
+    B = sp.bmat([Hx, Hy], format='csr')
+    BT = sp.bmat([[Hx], [Hy]], format='csr')
+
+    C = A + B.dot(BT) / perturb
+    f = np.concatenate((fx, fy))
+
+    d = spl.gmres(C, f)
+    d = d[0]
+    np.savetxt('./files/d.txt', d)
