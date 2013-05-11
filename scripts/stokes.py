@@ -7,18 +7,20 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spl
 import sys
-import matplotlib.pyplot as pyplot
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 
 
 def f1(x, y):
-    #fval = np.sin(np.pi * x) * np.sin(np.pi * y) * np.exp(-(x * x + y * y))
-    fval = -y
+    fval = np.sin(np.pi * x) * np.sin(np.pi * y) * np.exp(-(x * x + y * y))
+    #fval = 0
     return fval
 
 
 def f2(x, y):
     #fval = np.sin(np.pi * x) * np.sin(np.pi * y) * np.exp(-(x * x + y * y))
-    fval = x
+    fval = np.exp(-x) * y
     return fval
 
 
@@ -54,7 +56,7 @@ if __name__ == '__main__':
     # USER SET PARAMETERS
     reynolds = 1e0
     eps = 1e-4 / reynolds
-    mesh_file = 'box-circle.mesh'
+    mesh_file = 'box.mesh'
 
     root_dir = './files/'
     print "Loading and parsing the mesh...\t",
@@ -138,15 +140,6 @@ if __name__ == '__main__':
                                 lin_basis(j, x_g, y_g) *
                                 lin_basis(i, x_g, y_g))
 
-                    #for point in gauss_pts:
-                        #x_g, y_g = point
-                        #local_Hx[i, j] += weight_scaled * (
-                            #np.dot(quad_basis.grad(j, x_g, y_g), B[0]) *
-                            #lin_basis(i, x_g, y_g))
-                        #local_Hy[i, j] += weight_scaled * (
-                            #np.dot(quad_basis.grad(j, x_g, y_g), B[1]) *
-                            #lin_basis(i, x_g, y_g))
-
         counter += 1
         # scatter the local matrices
         for i in xrange(6):
@@ -181,28 +174,11 @@ if __name__ == '__main__':
     # Make a BIG MATRIX YAY
     k = len(interior_nodes)
     # But preallocate it first...
-    print "Constructing stiffness matrix with -eps...\t",
-    Am = sp.bmat([[S, sp.csr_matrix((k, k)), -Gx],
-                 [sp.csr_matrix((k, k)), S, -Gy],
-                 [-Gx.T, -Gy.T, -eps * T]])
-    Am = Am.tocsr()
-    print "Done!\n"
-
-    print "Constructing stiffness matrix with +eps...\t",
-    Ap = sp.bmat([[S, sp.csr_matrix((k, k)), -Gx],
+    print "Constructing stiffness matrix with mass perturbation...\t",
+    A = sp.bmat([[S, sp.csr_matrix((k, k)), -Gx],
                  [sp.csr_matrix((k, k)), S, -Gy],
                  [-Gx.T, -Gy.T, eps * T]])
-    Ap = Ap.tocsr()
-    print "Done!\n"
-
-    print "Constructing alternative system...\t",
-    Ar = sp.bmat([[S, np.zeros((k, k))],
-                  [np.zeros((k, k)), S]])
-    Br = sp.bmat([[Gx.dot(Gx.T), Gx.dot(Gy.T)],
-                  [Gy.dot(Gx.T), Gy.dot(Gy.T)]])
-
-    Ar = Ar.tocsr()
-    Br = Br.tocsr()
+    A = A.tocsr()
     print "Done!\n"
 
     # Change data type
@@ -211,15 +187,9 @@ if __name__ == '__main__':
     f[:k] = fx[:]
     f[k:2 * k] = fy[:]
     print "Done!\n"
-    fr = f[:2 * k]
 
     print "Solving the linear systems...\t",
-    cm = spl.spsolve(Am, f)
-    print "1...",
-    cp = spl.spsolve(Ap, f)
-    print "2...",
-    cr = spl.spsolve(Ar - Br / eps, fr)
-    print "3...!\nDone!"
+    c = spl.spsolve(A, f)
 
     # POST PROCESSING for system one
     x_p, y_p = coordinates[pnodes - 1].T
@@ -228,18 +198,37 @@ if __name__ == '__main__':
         for j, vert in enumerate(tri):
             tri_p[i, j] = np.where(pnodes == vert)[0][0]
 
-    np.savetxt('./files/tri.txt', tri_p)
-    np.savetxt('./files/x_p.txt', x_p)
-    np.savetxt('./files/y_p.txt', y_p)
-    np.savetxt('./files/pm.txt', cm[2 * k:])
-    np.savetxt('./files/pp.txt', cp[2 * k:])
+    u = np.zeros(n)
+    u[interior_nodes - 1] = c[:k]
+    v = np.zeros(n)
+    v[interior_nodes - 1] = c[k:2 * k]
+    p = np.zeros(m)
+    p = -c[2 * k:]
+    x, y = coordinates.T
 
     np.savetxt('./files/x.txt', coordinates[:, 0])
     np.savetxt('./files/y.txt', coordinates[:, 1])
+    np.savetxt('./files/tri.txt', tri_p)
+    np.savetxt('./files/x_p.txt', x_p)
+    np.savetxt('./files/y_p.txt', y_p)
+    np.savetxt('./files/p.txt', p)
+    np.savetxt('./files/u.txt', u)
+    np.savetxt('./files/v.txt', v)
 
-    np.savetxt('./files/um.txt', cm[:k])
-    np.savetxt('./files/vm.txt', cm[k:2 * k])
-    np.savetxt('./files/up.txt', cp[:k])
-    np.savetxt('./files/vp.txt', cp[k:2 * k])
-    np.savetxt('./files/ur.txt', cr[:k])
-    np.savetxt('./files/vr.txt', cr[k:2 * k])
+    fig1 = plt.figure()
+    plt.quiver(x, y, u, v)
+
+    fig2 = plt.figure()
+    ax = fig2.gca(projection='3d')
+    ax.plot_trisurf(x_p, y_p, p, cmap=cm.jet, linewidth=0.2)
+    plt.show()
+
+    fig3 = plt.figure()
+    ax = fig3.gca(projection='3d')
+    ax.plot_trisurf(x, y, u, cmap=cm.jet, linewidth=0.2)
+    plt.show()
+
+    fig4 = plt.figure()
+    ax = fig4.gca(projection='3d')
+    ax.plot_trisurf(x, y, v, cmap=cm.jet, linewidth=0.2)
+    plt.show()
