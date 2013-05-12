@@ -7,7 +7,7 @@ y_top = 1.0;
 z_coord = 0.0;
  
 // define a mesh characteristic length (cl) - smaller=more refined mesh
-cl = 0.05;
+cl = 0.1;
  
 // define points to describe your 2D domain
 Point(1)={x_left,y_bottom,z_coord,cl};
@@ -22,9 +22,9 @@ Line(3)={3,4};
 Line(4)={4,1};
  
 // now, define a circle in the center of the rectangle
-x_c = (0.5)*((0.5)*((0.5)*(x_left + x_right) + x_right) + x_right);
+x_c = (0.5)*(x_left + x_right);
 y_c = (0.5)*(y_bottom + y_top);
-r = (0.1)*(y_top-y_bottom);
+r = (0.2)*(y_top-y_bottom);
  
 //To define a circle, place a point at the center + at points around the radius
 Point(5)={x_c,y_c,z_coord,cl}; //center point

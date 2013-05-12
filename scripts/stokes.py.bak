@@ -46,7 +46,7 @@ def calculate_B(coordinates):
                                    [y1 - y3, y2 - y3]]))
 
 
-def stokes():
+if __name__ == '__main__':
     eps = sys.float_info.epsilon
     # USER SET PARAMETERS
     reynolds = 1e0
@@ -80,9 +80,10 @@ def stokes():
     counter = 1
     total = len(elements)
     print "Constructing system..."
+
     for element in elements:
-        #if np.mod(counter, 100) == 1:
-            #print "Element %d of %d..." % (counter, total)
+        if np.mod(counter, 100) == 1:
+            print "Element %d of %d..." % (counter, total)
         # Precalculate some stuff
         element_coords = get_coordinates(element, domain.nodes)
         B = calculate_B(element_coords[:3])
@@ -103,10 +104,6 @@ def stokes():
                 x_g, y_g = point
                 local_F_x[i] += weight_scaled * f1(x_g, y_g)
                 local_F_y[i] += weight_scaled * f2(x_g, y_g)
-
-            F_x[element[i] - 1] += local_F_x[i]
-            F_y[element[i] - 1] += local_F_y[i]
-
             for j in xrange(6):
                 # Assemble S
                 for point in gauss_pts:
@@ -114,8 +111,6 @@ def stokes():
                     local_A[i, j] += (weight_scaled / reynolds) * np.dot(
                         np.dot(quad_basis.grad(j, x_g, y_g), B),
                         np.dot(B.T, quad_basis.grad(i, x_g, y_g)))
-
-                A[element[i] - 1, element[j] - 1] += local_A[i, j]
 
                 if j < 3:
                     # Assemble Gx and Gy
@@ -128,23 +123,26 @@ def stokes():
                             lin_basis(j, x_g, y_g) *
                             np.dot(quad_basis.grad(i, x_g, y_g), B[1]))
 
+        counter += 1
+        # scatter the local matrices
+        for i in xrange(6):
+            F_x[element[i] - 1] += local_F_x[i]
+            F_y[element[i] - 1] += local_F_y[i]
+            for j in xrange(6):
+                A[element[i] - 1, element[j] - 1] += local_A[i, j]
+                if j < 3:
                     pnode_j = np.where(pnodes == element[j])[0][0]
                     B_up[element[i] - 1, pnode_j] += local_B_up[i, j]
                     B_vp[element[i] - 1, pnode_j] += local_B_vp[i, j]
 
-        counter += 1
-
-    A = A.tocsr()
-    A = A[interior_nodes - 1, :]
     A = A.tocsc()
+    B_up = B_up.tocsc()
+    B_vp = B_vp.tocsc()
+
+    A = A[interior_nodes - 1, :]
     A = A[:, interior_nodes - 1]
-
-    B_up = B_up.tocsr()
     B_up = B_up[interior_nodes - 1, :]
-
-    B_vp = B_vp.tocsr()
     B_vp = B_vp[interior_nodes - 1, :]
-
     F_x = F_x[interior_nodes - 1, :]
     F_y = F_y[interior_nodes - 1, :]
 
@@ -164,15 +162,8 @@ def stokes():
     P = np.zeros(m)
     P = -sp.bmat([[B_up.T, B_vp.T]]).dot(UV) / eps
 
-    U = np.zeros(n)
-    V = np.zeros(n)
-    U[interior_nodes - 1] += UV[:k]
-    V[interior_nodes - 1] += UV[k:2 * k]
-
-    UVP = np.zeros(2 * n + m)
-    UVP[:n] = U[:]
-    UVP[n:2 * n] = V[:]
-    UVP[2 * n:] = P[:]
+    UVP = np.zeros(2 * k + m)
+    UVP = np.append(UV, P)
 
     # POST PROCESSING for system one
     x, y = coordinates[pnodes - 1].T
@@ -181,18 +172,18 @@ def stokes():
         for j, vert in enumerate(element):
             tri[i, j] = np.where(pnodes == vert)[0][0]
 
-    print "Saving some data..."
+    u = np.zeros(n)
+    u[interior_nodes - 1] = UVP[:n]
+    v = np.zeros(n)
+    v[interior_nodes - 1] = UVP[n:2 * n]
+    p = np.zeros(m)
     p = UVP[2 * n:]
-    u = UVP[n:2 * n]
-    v = UVP[:n]
+    x, y = coordinates.T
+
     np.savetxt('./files/UVP.txt', UVP)
     np.savetxt('./files/tri.txt', tri)
-    np.savetxt('./files/x.txt', x)
-    np.savetxt('./files/y.txt', y)
+    np.savetxt('./files/x.txt', x[pnodes - 1])
+    np.savetxt('./files/y.txt', y[pnodes - 1])
     np.savetxt('./files/p.txt', p)
     np.savetxt('./files/u.txt', u[pnodes - 1])
     np.savetxt('./files/v.txt', v[pnodes - 1])
-    print "All done! Thank you, come again!\n\n"
-
-if __name__ == "__main__":
-    stokes()
