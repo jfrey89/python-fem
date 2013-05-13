@@ -1,0 +1,62 @@
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+\usepackage{fixltx2e}
+\usepackage{mathtools}
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{enumerate}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{algorithm}
+
+% The preamble is also a good place to define new commands and macros.
+% This part of the preamble is strictly optional according to your taste.
+
+
+\theoremstyle{plain}
+\newtheorem{thm}{Theorem}[section]
+\newtheorem*{thm*}{Theorem}
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem*{prop*}{Proposition}
+\newtheorem*{cor}{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}[section]
+\newtheorem{conj}{Conjecture}[section]
+\newtheorem*{exmp}{Example}
+\newtheorem{prob}{Problem}
+\newtheorem{soln}{Solution}
+
+\theoremstyle{remark}
+\newtheorem*{rem}{Remark}
+\newtheorem*{note}{Note}
+\newtheorem{case}{Case}
+
+\newcommand*{\matminus}{%
+  \leavevmode
+  \hphantom{0}%
+  \llap{%
+    \settowidth{\dimen0 }{$0$}%
+    \resizebox{1.1\dimen0 }{\height}{$-$}%
+  }%
+}
+
+\newcommand*{\matplus}{%
+  \leavevmode
+  \hphantom{0}%
+  \llap{%
+    \settowidth{\dimen0 }{$0$}%
+    \resizebox{1.1\dimen0 }{\height}{$+$}%
+  }%
+}
+
+\newcommand\matlab{{\sc matlab }}
+\newcommand{\p}{\partial}
+\newcommand{\vect}[1]{\mathbf{#1}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\nil}{\varnothing}
+\newcommand{\del}{\nabla}
+\newcommand{\norm}[1]{\left|\left|#1\right|\right|}
+\newcommand{\abs}[1]{\left|#1\right|}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import division
-import ap.mesh.meshes as m
+import ap.mesh.meshes as msh
 import fem.Functions as fn
 import numpy as np
 import scipy.sparse as sp
@@ -10,12 +10,12 @@ import sys
 
 
 def f1(x, y):
-    fval = -y
+    fval = 10 * np.cos(np.pi*x) * np.power(y, 3) - 4 * x
     return fval
 
 
 def f2(x, y):
-    fval = x
+    fval = 0
     return fval
 
 
@@ -46,16 +46,17 @@ def calculate_B(coordinates):
                                    [y1 - y3, y2 - y3]]))
 
 
-def stokes():
+if __name__ == '__main__':
     eps = sys.float_info.epsilon
     # USER SET PARAMETERS
     reynolds = 1e0
+    o = 2
     eps = 1e-4 / reynolds
-    mesh_file = 'convergence/01.mesh'
+    mesh_file = '2box-circle.0.025.mesh'
 
     root_dir = './files/'
     print "Loading and parsing the mesh..."
-    domain = m.mesh_factory(root_dir + mesh_file)
+    domain = msh.mesh_factory(root_dir + mesh_file)
     elements = domain.elements
     nodes = np.unique(elements)
     pnodes = np.unique(elements.T[:3])
@@ -72,7 +73,7 @@ def stokes():
     B_up = sp.lil_matrix((n, m))
     B_vp = sp.lil_matrix((n, m))
     F_x = np.zeros(n)
-    F_y = F_x.copy()
+    F_y = np.zeros(n)
 
     quad_basis = fn.Quadratic_Basis_Function()
     lin_basis = fn.Linear_Basis_Function()
@@ -81,8 +82,8 @@ def stokes():
     total = len(elements)
     print "Constructing system..."
     for element in elements:
-        #if np.mod(counter, 100) == 1:
-            #print "Element %d of %d..." % (counter, total)
+        if np.mod(counter, 100) == 1:
+            print "Element %d of %d..." % (counter, total)
         # Precalculate some stuff
         element_coords = get_coordinates(element, domain.nodes)
         B = calculate_B(element_coords[:3])
@@ -91,11 +92,10 @@ def stokes():
 
         # Allocate local matrices
         local_A = sp.lil_matrix((6, 6))
-        #local_T = sp.lil_matrix((3, 3))
         local_B_up = sp.lil_matrix((6, 3))
         local_B_vp = sp.lil_matrix((6, 3))
-        local_F_x = np.zeros(n)
-        local_F_y = np.zeros(n)
+        local_F_x = np.zeros(6)
+        local_F_y = np.zeros(6)
 
         for i in xrange(6):
             # Assemble load vectors
@@ -157,42 +157,45 @@ def stokes():
                  [B_vp.dot(B_up.T), B_vp.dot(B_vp.T)]]) / eps
     M = M.tocsc()
 
-    print "Solving the linear systems..."
+    print "Solving the linear system..."
     UV = np.zeros(2 * k)
-    UV = spl.gmres(M, np.append(F_x, F_y))[0]
+    LU = spl.splu(M)
+    UV = LU.solve(np.append(F_x, F_y))
 
     P = np.zeros(m)
     P = -sp.bmat([[B_up.T, B_vp.T]]).dot(UV) / eps
+    UVP = np.zeros(2 * k + m)
+    UVP[:k] = UV[:k]
+    UVP[k:2 * k] = UV[k:2 * k]
+    UVP[2 * k:] = P[:]
 
     U = np.zeros(n)
+    U[interior_nodes - 1] = UVP[:k]
     V = np.zeros(n)
-    U[interior_nodes - 1] += UV[:k]
-    V[interior_nodes - 1] += UV[k:2 * k]
-
-    UVP = np.zeros(2 * n + m)
-    UVP[:n] = U[:]
-    UVP[n:2 * n] = V[:]
-    UVP[2 * n:] = P[:]
+    V[interior_nodes - 1] = UVP[k:2 * k]
 
     # POST PROCESSING for system one
     x, y = coordinates[pnodes - 1].T
     tri = np.zeros(np.shape(elements[:, :3]))
-    for i, element in enumerate(elements[:, :3]):
-        for j, vert in enumerate(element):
+    for i, triangle in enumerate(elements[:, :3]):
+        for j, vert in enumerate(triangle):
             tri[i, j] = np.where(pnodes == vert)[0][0]
 
+    F = np.zeros(2 * k + m)
+    F[:k] = F_x[:]
+    F[k:2 * k] = F_y[:]
     print "Saving some data..."
-    p = UVP[2 * n:]
-    u = UVP[n:2 * n]
-    v = UVP[:n]
+    u = np.zeros(n)
+    u[interior_nodes - 1] = UVP[k:]
+    v = np.zeros(n)
+    v[interior_nodes - 1] = UVP[k:2 * k]
+    np.save('./files/UVP.npy', UVP)
+    np.save('./files/F.npy', F)
     np.savetxt('./files/UVP.txt', UVP)
     np.savetxt('./files/tri.txt', tri)
     np.savetxt('./files/x.txt', x)
     np.savetxt('./files/y.txt', y)
-    np.savetxt('./files/p.txt', p)
+    np.savetxt('./files/p.txt', P)
     np.savetxt('./files/u.txt', u[pnodes - 1])
     np.savetxt('./files/v.txt', v[pnodes - 1])
     print "All done! Thank you, come again!\n\n"
-
-if __name__ == "__main__":
-    stokes()

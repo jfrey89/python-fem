@@ -17,7 +17,11 @@ Point(4)={(0.625)*(x_left + x_right),(0.375)*(y_bottom + y_top),z_coord,cl};
 Point(5)={(0.625)*(x_left + x_right),y_bottom,z_coord,cl};
 Point(6)={x_right,y_bottom,z_coord,cl};
 Point(7)={x_right,y_top,z_coord,cl};
-Point(8)={x_left,y_top,z_coord,cl};
+Point(8)={(0.625)*(x_left + x_right),y_top,z_coord,cl};
+Point(9)={(0.625)*(x_left + x_right),(0.625)*(y_top + y_bottom),z_coord,cl};
+Point(10)={(0.375)*(x_left + x_right),(0.625)*(y_top + y_bottom),z_coord,cl};
+Point(11)={(0.375)*(x_left + x_right),y_top,z_coord,cl};
+Point(12)={x_left,y_top,z_coord,cl};
  
 // make these points into lines
 Line(1)={1,2}; //Line(#)={Start Point,End Point}
@@ -27,19 +31,13 @@ Line(4)={4,5};
 Line(5)={5,6};
 Line(6)={6,7};
 Line(7)={7,8};
-Line(8)={8,1};
-Line Loop(9)={1,2,3,4,5,6,7,8};
-Plane Surface(10)={9};
- 
-//Name the surfaces to allow assignment of boundary conditions
-Physical Line(11)={1};//bottom boundary
-Physical Line(12)={2};//right boundary
-Physical Line(13)={3};//top boundary
-Physical Line(14)={4};//left boundary
-Physical Line(15)={5};//left boundary
-Physical Line(16)={6};//left boundary
-Physical Line(17)={7};//left boundary
-Physical Line(18)={8};//left boundary
- 
+Line(8)={8,9};
+Line(9)={9,10};
+Line(10)={10,11};
+Line(11)={11,12};
+Line(12)={12,1};
+Line Loop(13)={1,2,3,4,5,6,7,8,9,10,11,12};
+Plane Surface(14)={13};
+
 //You also have to give a name to the Plane surface
 Physical Surface(19)={10};

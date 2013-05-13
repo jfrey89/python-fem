@@ -22,11 +22,9 @@ Line(3)={3,4};
 Line(4)={4,1};
  
 // now, define a circle in the center of the rectangle
-x_c = (0.75)*(x_left + x_right);
+x_c = (0.5)*(x_left + x_right);
 y_c = (0.5)*(y_bottom + y_top);
 r = (0.2)*(y_top-y_bottom);
-
-x_c2 = (0.25)*(x_left + x_right);
  
 //To define a circle, place a point at the center + at points around the radius
 Point(5)={x_c,y_c,z_coord,cl}; //center point
@@ -34,32 +32,21 @@ Point(6)={x_c+r,y_c,z_coord,cl}; //3 o'clock position
 Point(7)={x_c,y_c+r,z_coord,cl}; //12 o'clock position
 Point(8)={x_c-r,y_c,z_coord,cl}; //etc...
 Point(9)={x_c,y_c-r,z_coord,cl};
-
-Point(35)={x_c2,y_c,z_coord,cl};
-Point(36)={x_c2+r,y_c,z_coord,cl};
-Point(37)={x_c2,y_c+r,z_coord,cl};
-Point(38)={x_c2-r,y_c,z_coord,cl};
-Point(39)={x_c2,y_c-r,z_coord,cl};
  
 //connect these points with circle segments
 Circle(5)={6,5,7}; //Circle(#)={arc start, center point, arc end}.
 Circle(6)={7,5,8};
 Circle(7)={8,5,9};
 Circle(8)={9,5,6};
-
-Circle(45)={36,35,37};
-Circle(46)={37,35,38};
-Circle(47)={38,35,39};
-Circle(48)={39,35,36};
  
 // Now connect the lines of the outer rectangle into a line loop.
 Line Loop(9)={1,2,3,4}; //Line Loop(#)={Line Segment 1,...,Line Segment n}
  
 //...do the same with the circular hole...
 Line Loop(10)={5,6,7,8};
-Line Loop(21)={45,46,47,48};
+ 
 //Create a plane surface that can be meshed:
-Plane Surface(11)={9,10,21}; //Plane Surface(#)={boundary Line Loop,interior hole Line Loop}
+Plane Surface(11)={9,10}; //Plane Surface(#)={boundary Line Loop,interior hole Line Loop}
  
 //Name the surfaces to allow assignment of boundary conditions
 Physical Line(12)={1};//bottom boundary
@@ -75,4 +62,3 @@ Physical Line(19)={8};
  
 //You also have to give a name to the Plane surface
 Physical Surface(20)={11};
-
