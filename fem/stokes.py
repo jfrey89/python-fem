@@ -10,12 +10,12 @@ import sys
 
 
 def f1(x, y):
-    fval = 10 * np.cos(np.pi*x) * np.power(y, 3) - 4 * x
+    fval = np.power(x, 2) * np.power(y, 3) * np.cos(y * np.pi)
     return fval
 
 
 def f2(x, y):
-    fval = 0
+    fval = 1e-4 * np.abs((y - 0.5))
     return fval
 
 
