@@ -8,16 +8,6 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spl
 
 
-def f1(x, y):
-    fval = y * (y - 1)
-    return fval
-
-
-def f2(x, y):
-    fval = 0
-    return fval
-
-
 def calculate_B(coordinates):
     # unpack coordinates
     x1, y1 = coordinates[0]
@@ -245,6 +235,8 @@ if __name__ == "__main__":
                                 weight_scaled * db_dy * \
                                 lin_basis(j, x_g, y_g)
 
+        old_rhs = rhs.copy()
+
         Auu = Auu.tocsc()
         Auu = Auu[interior_nodes - 1, :]
         Auu = Auu[:, interior_nodes - 1]
@@ -273,6 +265,15 @@ if __name__ == "__main__":
         rhsy = rhsy[interior_nodes - 1]
         rhs[k:2 * k] = rhsy[:]
 
+        diff_rhs = np.linalg.norm(rhs - old_rhs)
+
+        print "\n..."
+        print "BREAKING NEWS UPDATE!!!"
+        print "...\n"
+        print "||residual|| = %0.10f" % (np.linalg.norm(rhs))
+        print "It changed by %0.3e!!" % diff_rhs
+        print "WOW!!\n"
+
         if np.allclose(np.linalg.norm(rhs), 0):
             print "||residual|| sufficiently close to 0!"
             print '*' * 60
@@ -290,17 +291,25 @@ if __name__ == "__main__":
                      [-Bup.T, -Bvp.T, sp.csc_matrix((m, m))]])
         M = M.tocsc()
 
+        old_d_n = d_n.copy()
+
         M_lu = spl.splu(M)
         print "Solving the system."
         d_n = M_lu.solve(rhs)
         # Update
+        diff_d_n = np.linalg.norm(d_n - old_d_n)
         u_n = np.zeros(2 * k + m)
         u_n = coeffs + d_n
 
+        print "\n..."
+        print "BREAKING NEWS UPDATE!!!"
+        print "...\n"
         print "||d_n|| = %0.10f" % (np.linalg.norm(d_n))
+        print "It changed by %0.3e!!" % diff_d_n
+        print "WOW!!\n"
 
         if np.allclose(np.linalg.norm(d_n), 0):
-            print "||update vector|| sufficiently close to 0!"
+            print "||d_n|| sufficiently close to 0!"
             print '*' * 60
             print "NEWTON'S METHOD WAS A SUCCESS."
             print "HOORAY" * 10
