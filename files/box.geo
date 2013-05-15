@@ -7,7 +7,7 @@ y_top = 3.0;
 z_coord = 0.0;
  
 // define a mesh characteristic length (cl) - smaller=more refined mesh
-cl = 0.05;
+cl = 0.15;
  
 // define points to describe your 2D domain
 Point(1)={x_left,y_bottom,z_coord,cl};

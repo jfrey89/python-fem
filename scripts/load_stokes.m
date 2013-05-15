@@ -1,11 +1,13 @@
 close all
 clc
 x = load('./files/x.txt');
-y = load('./files/y.txt');
-p_s = load('./files/p.txt');
-u_s = load('./files/u.txt');
-v_s = load('./files/v.txt');
+p_s = load('./files/p_s.txt');
+u_s = load('./files/u_s.txt');
+v_s = load('./files/v_s.txt');
 tri = load('./files/tri.txt');
+p_ns = load('./files/p_ns.txt');
+u_ns = load('./files/u_ns.txt');
+v_ns = load('./files/v_ns.txt');
 
 % figure()
 % femMesh = trisurf(tri,x,y,p, 'EdgeColor', 'flat', ...

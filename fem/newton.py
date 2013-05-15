@@ -8,6 +8,16 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spl
 
 
+def f1(x, y):
+    fval = y * (y - 1)
+    return fval
+
+
+def f2(x, y):
+    fval = 0
+    return fval
+
+
 def calculate_B(coordinates):
     # unpack coordinates
     x1, y1 = coordinates[0]
@@ -89,7 +99,7 @@ def dv_dy(x, y, B, ve, quad_basis):
     return dv_dy
 
 if __name__ == "__main__":
-    eps = 0.001
+    eps = 0.01
     reynolds = 1
     mesh_file = './files/box.mesh'
 
@@ -119,20 +129,12 @@ if __name__ == "__main__":
     coeffs = u_0.copy()
     d_n = np.zeros(2 * k + m)
 
-    print "Starting loop 5evr.\n"
     while True:
-        print '*' * 40
-        print '*' * 40
-        print '\nNEWTON METHOD ITERATION NUMBER: %d\n' % newt_count
-        print '*' * 40
-        print '*' * 40
-        print '\n'
         P = np.zeros(m)
         U = np.zeros(n)
         V = np.zeros(n)
         U[interior_nodes - 1] = coeffs[:k]
         V[interior_nodes - 1] = coeffs[k:2 * k]
-        P[:] = coeffs[2 * k:]
 
         Auu = sp.lil_matrix((n, n))
         Auv = sp.lil_matrix((n, n))
@@ -140,6 +142,7 @@ if __name__ == "__main__":
         Avv = sp.lil_matrix((n, n))
         Bup = sp.lil_matrix((n, m))
         Bvp = sp.lil_matrix((n, m))
+        T = sp.lil_matrix((m, m))
 
         rhsx = np.zeros(n)
         rhsy = np.zeros(n)
@@ -147,10 +150,6 @@ if __name__ == "__main__":
 
         counter = 1
         for element in elements:
-            if np.mod(counter, 100) == 1:
-                print "Element %d of %d..." % (counter, total)
-
-            counter += 1
 
             ue = np.zeros(6)
             ve = np.zeros(6)
@@ -168,19 +167,21 @@ if __name__ == "__main__":
                 x_g, y_g = point
 
                 for i in xrange(6):
-                    rhsy[element[i] - 1] += weight_scaled * (
+                    rhsy[element[i] - 1] += -weight_scaled * (
                         u_f(x_g, y_g, ue, quad_basis) *
                         du_dx(x_g, y_g, B, ue, quad_basis) +
                         v_f(x_g, y_g, ve, quad_basis) *
                         du_dy(x_g, y_g, B, ue, quad_basis)) * \
-                        quad_basis(i, x_g, y_g)
+                        quad_basis(i, x_g, y_g) + weight_scaled * \
+                        f1(x_g, y_g) * quad_basis(i, x_g, y_g)
 
-                    rhsy[element[i] - 1] += weight_scaled * (
+                    rhsy[element[i] - 1] += -weight_scaled * (
                         u_f(x_g, y_g, ue, quad_basis) *
                         dv_dx(x_g, y_g, B, ve, quad_basis) +
                         v_f(x_g, y_g, ve, quad_basis) *
                         dv_dy(x_g, y_g, B, ve, quad_basis)) * \
-                        quad_basis(i, x_g, y_g)
+                        quad_basis(i, x_g, y_g) + weight_scaled * \
+                        f2(x_g, y_g) * quad_basis(i, x_g, y_g)
 
                     for j in xrange(6):
 
@@ -235,6 +236,13 @@ if __name__ == "__main__":
                                 weight_scaled * db_dy * \
                                 lin_basis(j, x_g, y_g)
 
+                            if i < 3:
+                                pnode_i = np.where(pnodes == element[i])[0][0]
+
+                                T[pnode_i, pnode_j] += weight_scaled * \
+                                    lin_basis(j, x_g, y_g) * \
+                                    lin_basis(i, x_g, y_g)
+
         old_rhs = rhs.copy()
 
         Auu = Auu.tocsc()
@@ -265,26 +273,9 @@ if __name__ == "__main__":
         rhsy = rhsy[interior_nodes - 1]
         rhs[k:2 * k] = rhsy[:]
 
+        T = T.tocsc()
+
         diff_rhs = np.linalg.norm(rhs - old_rhs)
-
-        print "\n..."
-        print "BREAKING NEWS UPDATE!!!"
-        print "...\n"
-        print "||residual|| = %0.10f" % (np.linalg.norm(rhs))
-        print "It changed by %0.3e!!" % diff_rhs
-        print "WOW!!\n"
-
-        if np.allclose(np.linalg.norm(rhs), 0):
-            print "||residual|| sufficiently close to 0!"
-            print '*' * 60
-            print "NEWTON'S METHOD WAS A SUCCESS."
-            print "HOORAY" * 10
-            print "IT TOOK:\t%d ITERATIONS" % newt_count
-            print "*" * 60
-            np.savetxt('./files/ns_soln.txt', coeffs)
-            np.save('./files/ns_soln.npy', coeffs)
-            print "Have a nice day!\n\n"
-            break
 
         M = sp.bmat([[Auu, Auv, -Bup],
                      [Avu, Avv, -Bvp],
@@ -294,7 +285,6 @@ if __name__ == "__main__":
         old_d_n = d_n.copy()
 
         M_lu = spl.splu(M)
-        print "Solving the system."
         d_n = M_lu.solve(rhs)
         # Update
         diff_d_n = np.linalg.norm(d_n - old_d_n)
@@ -302,25 +292,51 @@ if __name__ == "__main__":
         u_n = coeffs + d_n
 
         print "\n..."
-        print "BREAKING NEWS UPDATE!!!"
+        print "Run: %d\t||d_n|| = %0.10f\t||res|| = %0.10f"  \
+            % (newt_count, np.linalg.norm(d_n), np.linalg.norm(rhs))
         print "...\n"
-        print "||d_n|| = %0.10f" % (np.linalg.norm(d_n))
-        print "It changed by %0.3e!!" % diff_d_n
-        print "WOW!!\n"
 
-        if np.allclose(np.linalg.norm(d_n), 0):
+        if np.linalg.norm(d_n) < 1e-2:
             print "||d_n|| sufficiently close to 0!"
             print '*' * 60
             print "NEWTON'S METHOD WAS A SUCCESS."
             print "HOORAY" * 10
             print "IT TOOK:\t%d ITERATIONS" % newt_count
             print "*" * 60
+            u_coeffs = np.zeros(n)
+            v_coeffs = np.zeros(n)
+            p_coeffs = np.zeros(n)
+            u_coeffs[interior_nodes - 1] = u_n[:k]
+            v_coeffs[interior_nodes - 1] = u_n[k:2 * k]
+            p_coeffs[pnodes - 1] = u_n[2 * k:]
+            np.savetxt('./files/u_ns.txt', u_coeffs)
+            np.savetxt('./files/v_ns.txt', v_coeffs)
+            np.savetxt('./files/p_ns.txt', p_coeffs)
             np.savetxt('./files/ns_soln.txt', u_n)
             np.save('./files/ns_soln.npy', u_n)
             print "Have a nice day!\n\n"
             break
-
-        coeffs = u_n.copy()
-        newt_count += 1
-
-        print 'AGAIN!\n\n'
+        elif np.linalg.norm(rhs) < 1e-2:
+            print "||residual|| sufficiently close to 0!"
+            print '*' * 60
+            print "NEWTON'S METHOD WAS A SUCCESS."
+            print "HOORAY" * 10
+            print "IT TOOK:\t%d ITERATIONS" % newt_count
+            print "*" * 60
+            u_coeffs = np.zeros(n)
+            v_coeffs = np.zeros(n)
+            p_coeffs = np.zeros(n)
+            u_coeffs[interior_nodes - 1] = coeffs[:k]
+            v_coeffs[interior_nodes - 1] = coeffs[k:2 * k]
+            p_coeffs[pnodes - 1] = coeffs[2 * k:]
+            np.savetxt('./files/u_ns.txt', u_coeffs)
+            np.savetxt('./files/v_ns.txt', v_coeffs)
+            np.savetxt('./files/p_ns.txt', p_coeffs)
+            np.savetxt('./files/ns_soln.txt', coeffs)
+            np.save('./files/ns_soln.npy', coeffs)
+            print "Have a nice day!\n\n"
+            break
+        else:
+            np.savetxt('./files/newton_tmp.txt', u_n)
+            coeffs = u_n.copy()
+            newt_count += 1

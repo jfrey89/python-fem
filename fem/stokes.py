@@ -50,7 +50,7 @@ if __name__ == '__main__':
     eps = sys.float_info.epsilon
     # USER SET PARAMETERS
     reynolds = 1
-    eps = 0.001
+    eps = 0.01
     mesh_file = './files/box.mesh'
 
     print "Loading and parsing the mesh..."
@@ -173,8 +173,19 @@ if __name__ == '__main__':
     M_lu = spl.splu(M)
     uvp = M_lu.solve(F)
 
-    # POST PROCESSING for system one
+    u_coeffs = np.zeros(n)
+    v_coeffs = np.zeros(n)
+    p_coeffs = np.zeros(n)
+    u_coeffs[interior_nodes - 1] = uvp[k:]
+    v_coeffs[interior_nodes - 1] = uvp[k:2 * k]
+    p_coeffs[pnodes - 1] = uvp[2 * k:]
+
     np.save('./files/u0.npy', uvp)
-    np.save('./files/lin_mass.npy', T)
-    np.save('./files/quad_dmass.npy', A)
+    np.savetxt('./files/u0.txt', uvp)
+    np.savetxt('./files/tri.txt', elements)
+    np.savetxt('./files/u_s.txt', u_coeffs)
+    np.savetxt('./files/v_s.txt', v_coeffs)
+    np.savetxt('./files/p_s.txt', p_coeffs)
+    np.savetxt('./files/x.txt', coordinates)
+
     print "All done! Thank you, come again!\n"
